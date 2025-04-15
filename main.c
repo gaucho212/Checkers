@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <math.h>
+#include <stdlib.h>
 
 #define BOARD_SIZE 8
 
@@ -221,7 +222,7 @@ int main() {
     while (true) {
         print_board();
         printf("Gracz %c, podaj ruch (from_x from_y to_x to_y): ", current_player);
-        scanf("%d %d %d %d", &from_x, &from_y, &to_x, &to_y);
+        scanf("%d %d %d %d", &from_y, &from_x, &to_y, &to_x);
 
         // Sprawdzenie, czy wybrano prawidłowy pionek
         if (board[from_x][from_y] != current_player && board[from_x][from_y] != (current_player == 'w' ? 'W' : 'B')) {
