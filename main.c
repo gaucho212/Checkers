@@ -2,8 +2,12 @@
 #include <stdbool.h>
 #include <math.h>
 #include <stdlib.h>
+#include <gtk/gtk.h>
+
 
 #define BOARD_SIZE 8
+
+
 
 // Reprezentacja planszy: ' ' - puste, 'b' - pionek czarny, 'B' - damka czarna, 'w' - pionek biały, 'W' - damka biała
 char board[BOARD_SIZE][BOARD_SIZE];
@@ -213,8 +217,90 @@ void make_move(int from_x, int from_y, int to_x, int to_y) {
     if (piece == 'b' && to_x == 7) board[to_x][to_y] = 'B';
 }
 
+static const char* piece_image_path(int i, int j) {
+    switch (board[i][j]) {
+        case 'b': return "black.png";
+        case 'B': return "black_queen.png";
+        case 'w': return "white.png";
+        case 'W': return "white_queen.png";
+        default:  return NULL;
+    }
+}
+
+static void activate(GtkApplication *app, gpointer user_data) {
+    GtkWidget *window;
+    GtkWidget *grid;
+    GtkCssProvider *provider;
+    GdkDisplay *display;
+    GdkScreen  *screen;
+    GtkWidget *cell;
+    GtkWidget *img;
+
+    // 1. Stworzenie stanu gry
+    initialize_board();
+
+    // 2. Utworzenie okna
+    window = gtk_application_window_new(app);
+    gtk_window_set_title(GTK_WINDOW(window), "Warcaby");
+    gtk_window_set_default_size(GTK_WINDOW(window), 400, 400);
+
+    // 3. Utworzenie siatki 8x8
+    grid = gtk_grid_new();
+    gtk_grid_set_row_homogeneous(GTK_GRID(grid), TRUE);
+    gtk_grid_set_column_homogeneous(GTK_GRID(grid), TRUE);
+    gtk_container_add(GTK_CONTAINER(window), grid);
+
+    // 4. Załadowanie stylów CSS
+    provider = gtk_css_provider_new();
+    gtk_css_provider_load_from_data(provider,
+        ".white-cell { background-color: beige; }\n"
+        ".black-cell { background-color: sienna; }\n",
+        -1, NULL);
+    display = gdk_display_get_default();
+    screen  = gdk_display_get_default_screen(display);
+    gtk_style_context_add_provider_for_screen(screen,
+        GTK_STYLE_PROVIDER(provider),
+        GTK_STYLE_PROVIDER_PRIORITY_USER);
+
+    // 5. Wypełnienie planszy polami i pionkami
+    for (int i = 0; i < BOARD_SIZE; i++) {
+        for (int j = 0; j < BOARD_SIZE; j++) {
+            cell = gtk_event_box_new();
+            // Ustawienie koloru pola
+            if ((i + j) % 2 == 0)
+                gtk_widget_set_name(cell, "white-cell");
+            else
+                gtk_widget_set_name(cell, "black-cell");
+
+            // Dodanie ewentualnego pionka
+            const char *path = piece_image_path(i, j);
+            if (path) {
+                img = gtk_image_new_from_file(path);
+                gtk_container_add(GTK_CONTAINER(cell), img);
+            }
+
+            // Dodanie pola do siatki
+            gtk_grid_attach(GTK_GRID(grid), cell, j, i, 1, 1);
+            gtk_widget_show(cell);
+        }
+    }
+
+    // 6. Wyświetlenie całego okna wraz z dziećmi
+    gtk_widget_show_all(window);
+}
+
 // Główna funkcja gry
-int main() {
+int main(int argc, char **argv) {
+
+    GtkApplication *app;
+
+    int status;
+
+    app = gtk_application_new ("org.gtk.example", G_APPLICATION_DEFAULT_FLAGS);
+    g_signal_connect (app, "activate", G_CALLBACK (activate), NULL);
+    status = g_application_run (G_APPLICATION (app), argc, argv);
+    g_object_unref (app);
+
     initialize_board();
     char current_player = 'w';
     int from_x, from_y, to_x, to_y;
@@ -271,5 +357,6 @@ int main() {
         }
     }
 
-    return 0;
+    return status;
 }
+// Kompilacja: gcc -o main main.c `pkg-config --cflags --libs gtk+-3.0`
