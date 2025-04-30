@@ -4,12 +4,10 @@
 #include <stdlib.h>
 #include <gtk/gtk.h>
 
-
 #define BOARD_SIZE 8
 
-
-
-// Reprezentacja planszy: ' ' - puste, 'b' - pionek czarny, 'B' - damka czarna, 'w' - pionek biały, 'W' - damka biała
+// Reprezentacja planszy: ' ' - puste, 'b' - pionek czarny, 'B' - damka czarna,
+// 'w' - pionek biały, 'W' - damka biała
 char board[BOARD_SIZE][BOARD_SIZE];
 
 // Funkcje pomocnicze
@@ -17,16 +15,15 @@ bool is_white(char piece) { return piece == 'w' || piece == 'W'; }
 bool is_black(char piece) { return piece == 'b' || piece == 'B'; }
 bool is_queen(char piece) { return piece == 'W' || piece == 'B'; }
 
-// Inicjalizacja planszy
 void initialize_board() {
-    for (int i = 0; i < BOARD_SIZE; i++) {
-        for (int j = 0; j < BOARD_SIZE; j++) {
-            if ((i + j) % 2 == 0) {  // Czarne pola
-                if (i < 3) board[i][j] = 'b';         // Pionki czarne
-                else if (i > 4) board[i][j] = 'w';    // Pionki białe
-                else board[i][j] = ' ';               // Puste pola
+    for (int r = 0; r < BOARD_SIZE; r++) {
+        for (int c = 0; c < BOARD_SIZE; c++) {
+            if ((r + c) % 2 == 0) {
+                if (r < 3) board[r][c] = 'b';
+                else if (r > 4) board[r][c] = 'w';
+                else board[r][c] = ' ';
             } else {
-                board[i][j] = ' ';  // Białe pola (niewykorzystane)
+                board[r][c] = ' ';
             }
         }
     }
@@ -35,149 +32,160 @@ void initialize_board() {
 // Wyświetlanie planszy
 void print_board() {
     printf("\n  0 1 2 3 4 5 6 7\n");
-    for (int i = 0; i < BOARD_SIZE; i++) {
-        printf("%d ", i);
-        for (int j = 0; j < BOARD_SIZE; j++) {
-            printf("%c ", board[i][j]);
+    for (int r = 0; r < BOARD_SIZE; r++) {
+        printf("%d ", r);
+        for (int c = 0; c < BOARD_SIZE; c++) {
+            printf("%c ", board[r][c]);
         }
         printf("\n");
     }
     printf("\n");
 }
 
-// Sprawdzenie, czy ruch jest legalny dla pionka
-bool is_valid_pawn_move(int from_x, int from_y, int to_x, int to_y, char player) {
-    if (from_x < 0 || from_x >= BOARD_SIZE || from_y < 0 || from_y >= BOARD_SIZE ||
-        to_x < 0 || to_x >= BOARD_SIZE || to_y < 0 || to_y >= BOARD_SIZE) {
-        return false;
-    }
-    if (board[to_x][to_y] != ' ') return false;
+// Sprawdzenie legalności ruchu pionka
+bool is_valid_pawn_move(int fr, int fc, int tr, int tc, char player) {
+    if (tr < 0 || tr >= BOARD_SIZE || tc < 0 || tc >= BOARD_SIZE) return false;
+    if (board[tr][tc] != ' ') return false;
 
-    int dx = to_x - from_x;
-    int dy = to_y - from_y;
-    if (abs(dx) != abs(dy)) return false;
+    int dr = tr - fr;
+    int dc = tc - fc;
+    if (abs(dr) != abs(dc)) return false;
 
     if (player == 'w') {
-        if (dx > 0) return false;  // Biały pionek porusza się w górę
-        if (abs(dx) == 1) return board[from_x][from_y] == 'w';
-        if (abs(dx) == 2) {
-            int mid_x = (from_x + to_x) / 2;
-            int mid_y = (from_y + to_y) / 2;
-            return board[from_x][from_y] == 'w' && is_black(board[mid_x][mid_y]);
+        if (dr > 0) return false;  // Biały pionek porusza się w górę
+        if (abs(dr) == 1) return board[fr][fc] == 'w';
+        if (abs(dr) == 2) {
+            int mr = (fr + tr) / 2;
+            int mc = (fc + tc) / 2;
+            return board[fr][fc] == 'w' && is_black(board[mr][mc]);
         }
-    } else if (player == 'b') {
-        if (dx < 0) return false;  // Czarny pionek porusza się w dół
-        if (abs(dx) == 1) return board[from_x][from_y] == 'b';
-        if (abs(dx) == 2) {
-            int mid_x = (from_x + to_x) / 2;
-            int mid_y = (from_y + to_y) / 2;
-            return board[from_x][from_y] == 'b' && is_white(board[mid_x][mid_y]);
+    } else {
+        if (dr < 0) return false;  // Czarny pionek porusza się w dół
+        if (abs(dr) == 1) return board[fr][fc] == 'b';
+        if (abs(dr) == 2) {
+            int mr = (fr + tr) / 2;
+            int mc = (fc + tc) / 2;
+            return board[fr][fc] == 'b' && is_white(board[mr][mc]);
         }
     }
     return false;
 }
 
-// Sprawdzenie, czy ruch jest legalny dla damki
-bool is_valid_queen_move(int from_x, int from_y, int to_x, int to_y, char player) {
-    if (from_x < 0 || from_x >= BOARD_SIZE || from_y < 0 || from_y >= BOARD_SIZE ||
-        to_x < 0 || to_x >= BOARD_SIZE || to_y < 0 || to_y >= BOARD_SIZE) {
-        return false;
-    }
-    if (board[to_x][to_y] != ' ') return false;
+// Sprawdzenie legalności ruchu damki
+bool is_valid_queen_move(int fr, int fc, int tr, int tc, char player) {
+    if (tr < 0 || tr >= BOARD_SIZE || tc < 0 || tc >= BOARD_SIZE) return false;
+    if (board[tr][tc] != ' ') return false;
 
-    int dx = to_x - from_x;
-    int dy = to_y - from_y;
-    if (abs(dx) != abs(dy)) return false;
+    int dr = tr - fr;
+    int dc = tc - fc;
+    if (abs(dr) != abs(dc)) return false;
 
-    int step_x = (dx > 0) ? 1 : -1;
-    int step_y = (dy > 0) ? 1 : -1;
-    int x = from_x + step_x;
-    int y = from_y + step_y;
+    int sr = (dr > 0) ? 1 : -1;
+    int sc = (dc > 0) ? 1 : -1;
+    int r = fr + sr, c = fc + sc;
     int captured = 0;
 
-    while (x != to_x && y != to_y) {
-        if (board[x][y] != ' ') {
-            if ((player == 'W' && is_black(board[x][y])) || (player == 'B' && is_white(board[x][y]))) {
+    while (r != tr && c != tc) {
+        if (board[r][c] != ' ') {
+            if ((player == 'W' && is_black(board[r][c])) || (player == 'B' && is_white(board[r][c]))) {
                 captured++;
-                if (captured > 1) return false;  // Damka może bić tylko jeden pionek na raz
+                if (captured > 1) return false;
             } else {
-                return false;  // Blokada przez własny pionek
+                return false;
             }
         }
-        x += step_x;
-        y += step_y;
+        r += sr;
+        c += sc;
     }
     return true;
 }
 
-// Sprawdzenie, czy gracz ma możliwość bicia
-bool has_capture(int x, int y, char player) {
-    char piece = board[x][y];
+// Sprawdzenie możliwości bicia
+// Sprawdzenie możliwości bicia
+bool has_capture(int r, int c, char player) {
+    char piece = board[r][c];
     if (piece != player && piece != (player == 'w' ? 'W' : 'B')) return false;
 
-    if (!is_queen(piece)) {  // Dla pionka
-        int directions[4][2] = {{-1, -1}, {-1, 1}, {1, -1}, {1, 1}};
-        for (int d = 0; d < 4; d++) {
-            int to_x = x + 2 * directions[d][0];
-            int to_y = y + 2 * directions[d][1];
-            int mid_x = x + directions[d][0];
-            int mid_y = y + directions[d][1];
-            if (to_x >= 0 && to_x < BOARD_SIZE && to_y >= 0 && to_y < BOARD_SIZE &&
-                board[to_x][to_y] == ' ' && 
-                ((player == 'w' && is_black(board[mid_x][mid_y])) || (player == 'b' && is_white(board[mid_x][mid_y])))) {
+    int dirs[4][2];
+    int num_dirs = 0;
+
+    if (!is_queen(piece)) {
+        if (player == 'w') {
+            // Białe pionki biją w górę: (-1, -1) i (-1, 1)
+            dirs[0][0] = -1; dirs[0][1] = -1;
+            dirs[1][0] = -1; dirs[1][1] = 1;
+            num_dirs = 2;
+        } else {
+            // Czarne pionki biją w dół: (1, -1) i (1, 1)
+            dirs[0][0] = 1; dirs[0][1] = -1;
+            dirs[1][0] = 1; dirs[1][1] = 1;
+            num_dirs = 2;
+        }
+    } else {
+        // Damki sprawdzają wszystkie cztery kierunki
+        dirs[0][0] = 1; dirs[0][1] = 1;
+        dirs[1][0] = 1; dirs[1][1] = -1;
+        dirs[2][0] = -1; dirs[2][1] = 1;
+        dirs[3][0] = -1; dirs[3][1] = -1;
+        num_dirs = 4;
+    }
+
+    for (int i = 0; i < num_dirs; i++) {
+        int tr = r + 2 * dirs[i][0];
+        int tc = c + 2 * dirs[i][1];
+        int mr = r + dirs[i][0];
+        int mc = c + dirs[i][1];
+        if (!is_queen(piece)) {
+            if (tr >= 0 && tr < BOARD_SIZE && tc >= 0 && tc < BOARD_SIZE && board[tr][tc] == ' ' &&
+                ((player == 'w' && is_black(board[mr][mc])) || (player == 'b' && is_white(board[mr][mc])))) {
                 return true;
             }
-        }
-    } else {  // Dla damki
-        int directions[4][2] = {{-1, -1}, {-1, 1}, {1, -1}, {1, 1}};
-        for (int d = 0; d < 4; d++) {
-            int step_x = directions[d][0];
-            int step_y = directions[d][1];
-            int tx = x + step_x;
-            int ty = y + step_y;
-            while (tx >= 0 && tx < BOARD_SIZE && ty >= 0 && ty < BOARD_SIZE) {
-                if (board[tx][ty] != ' ') {
-                    if ((player == 'W' && is_black(board[tx][ty])) || (player == 'B' && is_white(board[tx][ty]))) {
-                        int next_x = tx + step_x;
-                        int next_y = ty + step_y;
-                        if (next_x >= 0 && next_x < BOARD_SIZE && next_y >= 0 && next_y < BOARD_SIZE && board[next_x][next_y] == ' ') {
-                            return true;
-                        }
+        } else {
+            // Logika dla damki pozostaje bez zmian
+            int sr = dirs[i][0], sc = dirs[i][1];
+            int rr = r + sr, cc = c + sc;
+            bool found_opponent = false;
+            while (rr >= 0 && rr < BOARD_SIZE && cc >= 0 && cc < BOARD_SIZE) {
+                if (board[rr][cc] != ' ') {
+                    if ((player == 'W' && is_black(board[rr][cc])) || (player == 'B' && is_white(board[rr][cc]))) {
+                        if (found_opponent) break;
+                        found_opponent = true;
+                    } else {
+                        break;
                     }
-                    break;
+                } else if (found_opponent) {
+                    return true;
                 }
-                tx += step_x;
-                ty += step_y;
+                rr += sr;
+                cc += sc;
             }
         }
     }
     return false;
 }
 
-// Sprawdzenie, czy gracz ma jakiekolwiek legalne ruchy
+// Sprawdzenie legalnych ruchów
 bool has_legal_moves(char player) {
-    for (int i = 0; i < BOARD_SIZE; i++) {
-        for (int j = 0; j < BOARD_SIZE; j++) {
-            if ((player == 'w' && is_white(board[i][j])) || (player == 'b' && is_black(board[i][j]))) {
-                if (has_capture(i, j, player)) return true;
-                if (!is_queen(board[i][j])) {  // Ruchy zwykłe dla pionka
-                    int directions[2][2] = {{-1, -1}, {-1, 1}};
-                    if (player == 'b') directions[0][0] = 1, directions[1][0] = 1;
-                    for (int d = 0; d < 2; d++) {
-                        int to_x = i + directions[d][0];
-                        int to_y = j + directions[d][1];
-                        if (to_x >= 0 && to_x < BOARD_SIZE && to_y >= 0 && to_y < BOARD_SIZE && board[to_x][to_y] == ' ') {
+    for (int r = 0; r < BOARD_SIZE; r++) {
+        for (int c = 0; c < BOARD_SIZE; c++) {
+            if ((player == 'w' && is_white(board[r][c])) || (player == 'b' && is_black(board[r][c]))) {
+                if (has_capture(r, c, player)) return true;
+                if (!is_queen(board[r][c])) {
+                    int dirs[2][2] = {{-1, -1}, {-1, 1}};
+                    if (player == 'b') { dirs[0][0] = 1; dirs[1][0] = 1; }
+                    for (int i = 0; i < 2; i++) {
+                        int tr = r + dirs[i][0];
+                        int tc = c + dirs[i][1];
+                        if (tr >= 0 && tr < BOARD_SIZE && tc >= 0 && tc < BOARD_SIZE && board[tr][tc] == ' ') {
                             return true;
                         }
                     }
-                } else {  // Ruchy dla damki
-                    int directions[4][2] = {{-1, -1}, {-1, 1}, {1, -1}, {1, 1}};
-                    for (int d = 0; d < 4; d++) {
-                        int step_x = directions[d][0];
-                        int step_y = directions[d][1];
-                        int tx = i + step_x;
-                        int ty = j + step_y;
-                        while (tx >= 0 && tx < BOARD_SIZE && ty >= 0 && ty < BOARD_SIZE && board[tx][ty] == ' ') {
+                } else {
+                    int dirs[4][2] = {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
+                    for (int i = 0; i < 4; i++) {
+                        int rr = r + dirs[i][0];
+                        int cc = c + dirs[i][1];
+                        while (rr >= 0 && rr < BOARD_SIZE && cc >= 0 && cc < BOARD_SIZE && board[rr][cc] == ' ') {
                             return true;
                         }
                     }
@@ -189,36 +197,31 @@ bool has_legal_moves(char player) {
 }
 
 // Wykonanie ruchu
-void make_move(int from_x, int from_y, int to_x, int to_y) {
-    char piece = board[from_x][from_y];
-    board[to_x][to_y] = piece;
-    board[from_x][from_y] = ' ';
+void make_move(int fr, int fc, int tr, int tc) {
+    char p = board[fr][fc];
+    board[fr][fc] = ' ';
+    board[tr][tc] = p;
 
-    // Usunięcie zbitego pionka
-    if (abs(to_x - from_x) == 2 || is_queen(piece)) {
-        int dx = to_x - from_x;
-        int dy = to_y - from_y;
-        int step_x = (dx > 0) ? 1 : -1;
-        int step_y = (dy > 0) ? 1 : -1;
-        int x = from_x + step_x;
-        int y = from_y + step_y;
-        while (x != to_x && y != to_y) {
-            if (board[x][y] != ' ') {
-                board[x][y] = ' ';
+    if (abs(tr - fr) == 2 || is_queen(p)) {
+        int sr = (tr > fr) ? 1 : -1;
+        int sc = (tc > fc) ? 1 : -1;
+        int rr = fr + sr, cc = fc + sc;
+        while (rr != tr && cc != tc) {
+            if (board[rr][cc] != ' ') {
+                board[rr][cc] = ' ';
                 break;
             }
-            x += step_x;
-            y += step_y;
+            rr += sr;
+            cc += sc;
         }
     }
 
-    // Promocja na damkę
-    if (piece == 'w' && to_x == 0) board[to_x][to_y] = 'W';
-    if (piece == 'b' && to_x == 7) board[to_x][to_y] = 'B';
+    if (p == 'w' && tr == 0) board[tr][tc] = 'W';
+    if (p == 'b' && tr == 7) board[tr][tc] = 'B';
 }
 
-static const char* piece_image_path(int i, int j) {
-    switch (board[i][j]) {
+static const char* piece_image_path(int r, int c) {
+    switch (board[r][c]) {
         case 'b': return "black.png";
         case 'B': return "black_queen.png";
         case 'w': return "white.png";
@@ -228,135 +231,106 @@ static const char* piece_image_path(int i, int j) {
 }
 
 static void activate(GtkApplication *app, gpointer user_data) {
-    GtkWidget *window;
-    GtkWidget *grid;
+    GtkWidget *window, *grid, *cell, *img;
     GtkCssProvider *provider;
-    GdkDisplay *display;
-    GdkScreen  *screen;
-    GtkWidget *cell;
-    GtkWidget *img;
+    GdkDisplay *display = gdk_display_get_default();
+    GdkScreen  *screen  = gdk_display_get_default_screen(display);
 
-    // 1. Stworzenie stanu gry
     initialize_board();
 
-    // 2. Utworzenie okna
     window = gtk_application_window_new(app);
     gtk_window_set_title(GTK_WINDOW(window), "Warcaby");
     gtk_window_set_default_size(GTK_WINDOW(window), 400, 400);
 
-    // 3. Utworzenie siatki 8x8
     grid = gtk_grid_new();
     gtk_grid_set_row_homogeneous(GTK_GRID(grid), TRUE);
     gtk_grid_set_column_homogeneous(GTK_GRID(grid), TRUE);
     gtk_container_add(GTK_CONTAINER(window), grid);
 
-    // 4. Załadowanie stylów CSS
     provider = gtk_css_provider_new();
     gtk_css_provider_load_from_data(provider,
         ".white-cell { background-color: beige; }\n"
         ".black-cell { background-color: sienna; }\n",
         -1, NULL);
-    display = gdk_display_get_default();
-    screen  = gdk_display_get_default_screen(display);
     gtk_style_context_add_provider_for_screen(screen,
         GTK_STYLE_PROVIDER(provider),
         GTK_STYLE_PROVIDER_PRIORITY_USER);
 
-    // 5. Wypełnienie planszy polami i pionkami
-    for (int i = 0; i < BOARD_SIZE; i++) {
-        for (int j = 0; j < BOARD_SIZE; j++) {
+    for (int r = 0; r < BOARD_SIZE; r++) {
+        for (int c = 0; c < BOARD_SIZE; c++) {
             cell = gtk_event_box_new();
-            // Ustawienie koloru pola
-            if ((i + j) % 2 == 0)
-                gtk_widget_set_name(cell, "white-cell");
-            else
-                gtk_widget_set_name(cell, "black-cell");
-
-            // Dodanie ewentualnego pionka
-            const char *path = piece_image_path(i, j);
+            gtk_widget_set_name(cell, ((r + c) % 2 == 0) ? "white-cell" : "black-cell");
+            const char *path = piece_image_path(r, c);
             if (path) {
                 img = gtk_image_new_from_file(path);
                 gtk_container_add(GTK_CONTAINER(cell), img);
             }
-
-            // Dodanie pola do siatki
-            gtk_grid_attach(GTK_GRID(grid), cell, j, i, 1, 1);
+            gtk_grid_attach(GTK_GRID(grid), cell, c, r, 1, 1);
             gtk_widget_show(cell);
         }
     }
 
-    // 6. Wyświetlenie całego okna wraz z dziećmi
     gtk_widget_show_all(window);
 }
 
-// Główna funkcja gry
 int main(int argc, char **argv) {
-
     GtkApplication *app;
-
     int status;
 
-    app = gtk_application_new ("org.gtk.example", G_APPLICATION_DEFAULT_FLAGS);
-    g_signal_connect (app, "activate", G_CALLBACK (activate), NULL);
-    status = g_application_run (G_APPLICATION (app), argc, argv);
-    g_object_unref (app);
-
     initialize_board();
+
+    app = gtk_application_new("org.gtk.example", G_APPLICATION_DEFAULT_FLAGS);
+    g_signal_connect(app, "activate", G_CALLBACK(activate), NULL);
+    status = g_application_run(G_APPLICATION(app), argc, argv);
+    g_object_unref(app);
+
     char current_player = 'w';
-    int from_x, from_y, to_x, to_y;
+    int fr, fc, tr, tc;
 
     while (true) {
         print_board();
-        printf("Gracz %c, podaj ruch (from_x from_y to_x to_y): ", current_player);
-        scanf("%d %d %d %d", &from_y, &from_x, &to_y, &to_x);
+        printf("Gracz %c, podaj ruch (wiersz kolumna wiersz kolumna): ", current_player);
+        if (scanf("%d %d %d %d", &fr, &fc, &tr, &tc) != 4) break;
 
-        // Sprawdzenie, czy wybrano prawidłowy pionek
-        if (board[from_x][from_y] != current_player && board[from_x][from_y] != (current_player == 'w' ? 'W' : 'B')) {
+        if (board[fr][fc] != current_player && board[fr][fc] != (current_player == 'w' ? 'W' : 'B')) {
             printf("Nieprawidłowy pionek! Spróbuj ponownie.\n");
             continue;
         }
 
-        // Sprawdzenie legalności ruchu
-        bool is_capture_move = false;
-        if (is_queen(board[from_x][from_y])) {
-            is_capture_move = is_valid_queen_move(from_x, from_y, to_x, to_y, board[from_x][from_y]);
-        } else {
-            is_capture_move = is_valid_pawn_move(from_x, from_y, to_x, to_y, current_player);
-        }
+        bool capture = false;
+        if (is_queen(board[fr][fc])) capture = is_valid_queen_move(fr, fc, tr, tc, board[fr][fc]);
+        else capture = is_valid_pawn_move(fr, fc, tr, tc, current_player);
 
-        // Sprawdzenie, czy gracz musi bić
         bool must_capture = false;
-        for (int i = 0; i < BOARD_SIZE; i++) {
-            for (int j = 0; j < BOARD_SIZE; j++) {
-                if (has_capture(i, j, current_player)) {
-                    must_capture = true;
-                    break;
-                }
+        for (int r = 0; r < BOARD_SIZE && !must_capture; r++) {
+            for (int c = 0; c < BOARD_SIZE; c++) {
+                if (has_capture(r, c, current_player)) { must_capture = true; break; }
             }
-            if (must_capture) break;
         }
 
-        if (must_capture && !is_capture_move) {
+        if (must_capture && !capture) {
             printf("Musisz wykonać bicie! Spróbuj ponownie.\n");
             continue;
         }
 
-        if (is_capture_move || (!must_capture && (is_valid_pawn_move(from_x, from_y, to_x, to_y, current_player) || is_valid_queen_move(from_x, from_y, to_x, to_y, board[from_x][from_y])))) {
-            make_move(from_x, from_y, to_x, to_y);
+        if (capture || (!must_capture && (is_valid_pawn_move(fr, fc, tr, tc, current_player) ||
+            is_valid_queen_move(fr, fc, tr, tc, board[fr][fc])))) {
+            make_move(fr, fc, tr, tc);
             current_player = (current_player == 'w') ? 'b' : 'w';
         } else {
             printf("Nieprawidłowy ruch! Spróbuj ponownie.\n");
             continue;
         }
 
-        // Sprawdzenie końca gry
         if (!has_legal_moves(current_player)) {
             print_board();
-            printf("Gracz %c nie ma legalnych ruchów. Gracz %c wygrywa!\n", current_player, (current_player == 'w') ? 'b' : 'w');
+            printf("Gracz %c nie ma legalnych ruchów. Gracz %c wygrywa!\n", current_player,
+                (current_player == 'w') ? 'b' : 'w');
             break;
         }
     }
 
     return status;
 }
-// Kompilacja: gcc -o main main.c `pkg-config --cflags --libs gtk+-3.0`
+
+// Kompilacja: gcc -o warcaby main.c `pkg-config --cflags --libs gtk+-3.0`
