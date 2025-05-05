@@ -18,12 +18,22 @@ bool is_queen(char piece) { return piece == 'W' || piece == 'B'; }
 void initialize_board() {
     for (int r = 0; r < BOARD_SIZE; r++) {
         for (int c = 0; c < BOARD_SIZE; c++) {
-            if ((r + c) % 2 == 0) {
-                if (r < 3) board[r][c] = 'b';
-                else if (r > 4) board[r][c] = 'w';
-                else board[r][c] = ' ';
-            } else {
-                board[r][c] = ' ';
+            board[r][c] = ' ';  // puste pole
+        }
+    }
+
+    for (int r = 0; r < 3; r++) {
+        for (int c = 0; c < BOARD_SIZE; c++) {
+            if ((r + c) % 2 == 1) {
+                board[r][c] = 'b'; // czarne pionki na czarnych polach (góra)
+            }
+        }
+    }
+
+    for (int r = 5; r < 8; r++) {
+        for (int c = 0; c < BOARD_SIZE; c++) {
+            if ((r + c) % 2 == 1) {
+                board[r][c] = 'w'; // białe pionki na czarnych polach (dół)
             }
         }
     }
@@ -256,19 +266,26 @@ static void activate(GtkApplication *app, gpointer user_data) {
         GTK_STYLE_PROVIDER(provider),
         GTK_STYLE_PROVIDER_PRIORITY_USER);
 
-    for (int r = 0; r < BOARD_SIZE; r++) {
-        for (int c = 0; c < BOARD_SIZE; c++) {
-            cell = gtk_event_box_new();
-            gtk_widget_set_name(cell, ((r + c) % 2 == 0) ? "white-cell" : "black-cell");
-            const char *path = piece_image_path(r, c);
-            if (path) {
-                img = gtk_image_new_from_file(path);
-                gtk_container_add(GTK_CONTAINER(cell), img);
+        for (int r = 0; r < BOARD_SIZE; r++) {
+            for (int c = 0; c < BOARD_SIZE; c++) {
+                GtkWidget *event_box = gtk_event_box_new();
+                GtkWidget *frame = gtk_frame_new(NULL);
+                gtk_container_add(GTK_CONTAINER(event_box), frame);
+        
+                GtkStyleContext *ctx = gtk_widget_get_style_context(event_box);
+                gtk_style_context_add_class(ctx, ((r + c) % 2 == 0) ? "white-cell" : "black-cell");
+        
+                GtkWidget *piece_image = NULL;
+                const char *path = piece_image_path(r, c);
+                if (path != NULL) {
+                    piece_image = gtk_image_new_from_file(path);
+                    gtk_container_add(GTK_CONTAINER(frame), piece_image);
+                }
+        
+                gtk_grid_attach(GTK_GRID(grid), event_box, c, r, 1, 1);
             }
-            gtk_grid_attach(GTK_GRID(grid), cell, c, r, 1, 1);
-            gtk_widget_show(cell);
         }
-    }
+        
 
     gtk_widget_show_all(window);
 }
