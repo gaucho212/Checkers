@@ -409,7 +409,7 @@ static void activate(GtkApplication *app, gpointer user_data) {
         ".white-cell { background-color: beige; }\n"
         ".black-cell { background-color: sienna; }\n"
         ".selected-cell { background-color: lightblue; }\n"
-        ".available-move { background-color: #F0E68C;}\n",
+        ".available-move { background-color: #F0E68C; }\n",
         -1, NULL);
     gtk_style_context_add_provider_for_screen(screen, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
 
