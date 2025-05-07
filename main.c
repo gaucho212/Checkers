@@ -54,30 +54,66 @@ void print_board() {
 
 // Sprawdzenie legalności ruchu pionka
 bool is_valid_pawn_move(int fr, int fc, int tr, int tc, char player) {
-    if (tr < 0 || tr >= BOARD_SIZE || tc < 0 || tc >= BOARD_SIZE) return false;
-    if (board[tr][tc] != ' ') return false;
+    // 1) Poza planszą?
+    if (tr < 0 || tr >= BOARD_SIZE || tc < 0 || tc >= BOARD_SIZE) {
+       
+        return false;
+    }
+
+    // 2) Pole docelowe musi być puste
+    if (board[tr][tc] != ' ') {
+        
+        return false;
+    }
 
     int dr = tr - fr;
     int dc = tc - fc;
-    if (abs(dr) != abs(dc)) return false;
 
-    if (player == 'w') {
-        if (dr > 0) return false;  // Biały pionek porusza się w górę
-        if (abs(dr) == 1) return board[fr][fc] == 'w';
-        if (abs(dr) == 2) {
-            int mr = (fr + tr) / 2;
-            int mc = (fc + tc) / 2;
-            return board[fr][fc] == 'w' && is_black(board[mr][mc]);
-        }
-    } else {
-        if (dr < 0) return false;  // Czarny pionek porusza się w dół
-        if (abs(dr) == 1) return board[fr][fc] == 'b';
-        if (abs(dr) == 2) {
-            int mr = (fr + tr) / 2;
-            int mc = (fc + tc) / 2;
-            return board[fr][fc] == 'b' && is_white(board[mr][mc]);
+    // 3) Ruch musi być po przekątnej
+    if (abs(dr) != abs(dc)) {
+        
+        return false;
+    }
+
+    // Określenie kierunku ruchu dla gracza
+    int direction = (player == 'w') ? -1 : 1; // Białe idą w górę, czarne w dół
+
+    // 4) Zwykły krok (1 pole) - tylko do przodu
+    if (abs(dr) == 1) {
+        if (dr == direction) {
+            
+            return board[fr][fc] == player;
+        } else {
+            
+            return false;
         }
     }
+
+    // 5) Bicie (2 pola) - tylko do przodu
+    if (abs(dr) == 2) {
+        if (dr == 2 * direction) {
+            int mr = fr + direction; // Środkowe pole w pionie
+            int mc = fc + (dc > 0 ? 1 : -1); // Środkowe pole w poziomie
+            if (board[fr][fc] != player) {
+                
+                return false;
+            }
+            // Sprawdź, czy na środku stoi przeciwnik
+            if (player == 'w') {
+                
+                return is_black(board[mr][mc]);
+            } else {
+                
+                return is_white(board[mr][mc]);
+            }
+        } else {
+            
+            return false;
+        }
+    }
+
+    // Wszystkie inne przypadki
+    
     return false;
 }
 
@@ -314,14 +350,22 @@ int main(int argc, char **argv) {
             continue;
         }
 
-        bool capture = false;
-        if (is_queen(board[fr][fc])) capture = is_valid_queen_move(fr, fc, tr, tc, board[fr][fc]);
-        else capture = is_valid_pawn_move(fr, fc, tr, tc, current_player);
+        bool is_valid = false;
+        if (is_queen(board[fr][fc])) {
+            is_valid = is_valid_queen_move(fr, fc, tr, tc, board[fr][fc]);
+        } else {
+            is_valid = is_valid_pawn_move(fr, fc, tr, tc, current_player);
+        }
+
+        bool capture = is_valid && (abs(tr - fr) == 2 || is_queen(board[fr][fc]));
 
         bool must_capture = false;
         for (int r = 0; r < BOARD_SIZE && !must_capture; r++) {
             for (int c = 0; c < BOARD_SIZE; c++) {
-                if (has_capture(r, c, current_player)) { must_capture = true; break; }
+                if (has_capture(r, c, current_player)) { 
+                    must_capture = true; 
+                    break; 
+                }
             }
         }
 
@@ -330,8 +374,7 @@ int main(int argc, char **argv) {
             continue;
         }
 
-        if (capture || (!must_capture && (is_valid_pawn_move(fr, fc, tr, tc, current_player) ||
-            is_valid_queen_move(fr, fc, tr, tc, board[fr][fc])))) {
+        if (is_valid) {
             make_move(fr, fc, tr, tc);
             current_player = (current_player == 'w') ? 'b' : 'w';
         } else {
