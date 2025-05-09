@@ -11,7 +11,7 @@ Prosty projekt gry Warcaby napisany w języku C z graficznym interfejsem użytko
 
 ## 🖥️ Zrzut ekranu
 
-*(Tutaj możesz dodać obrazek np. `assets/screenshot.png`)*
+![Warcaby Screenshot](screenshot.png)
 
 
 
