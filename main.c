@@ -7,7 +7,7 @@
 #define BOARD_SIZE 8
 
 char board[BOARD_SIZE][BOARD_SIZE];
-char current_player = 'w';  // Zaczyna gracz 'w' (biały)
+char current_player = 'w';   // Zaczyna gracz 'w' (biały)
 GtkWidget *player_label;    // Etykieta pokazująca aktualnego gracza
 GtkWidget *stack;           // GtkStack do przełączania widoków
 GtkWidget *grid;            // Plansza gry
@@ -55,7 +55,7 @@ bool is_valid_pawn_move(int fr, int fc, int tr, int tc, char player) {
     return false;
 }
 
-bool is_valid_queen_move(int fr, int fc, int tr, int tc, char player) {
+bool is_valid_queen_move(int fr, int fc, int tr, int tc, char piece) {
     if (tr < 0 || tr >= BOARD_SIZE || tc < 0 || tc >= BOARD_SIZE) return false;
     if (board[tr][tc] != ' ') return false;
 
@@ -70,7 +70,7 @@ bool is_valid_queen_move(int fr, int fc, int tr, int tc, char player) {
 
     while (r != tr && c != tc) {
         if (board[r][c] != ' ') {
-            if ((player == 'W' && is_black(board[r][c])) || (player == 'B' && is_white(board[r][c]))) {
+            if ((is_white(piece) && is_black(board[r][c])) || (is_black(piece) && is_white(board[r][c]))) {
                 captured++;
                 if (captured > 1) return false;
             } else {
@@ -85,9 +85,9 @@ bool is_valid_queen_move(int fr, int fc, int tr, int tc, char player) {
 
 bool has_capture(int r, int c, char player) {
     char piece = board[r][c];
-    if (piece != player && piece != (player == 'w' ? 'W' : 'B')) return false;
+    if ((player == 'w' && !is_white(piece)) || (player == 'b' && !is_black(piece))) return false;
 
-    int dirs[4][2];
+    int dirs[4][2] = {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
     int num_dirs = is_queen(piece) ? 4 : 2;
 
     if (!is_queen(piece)) {
@@ -98,19 +98,14 @@ bool has_capture(int r, int c, char player) {
             dirs[0][0] = 1; dirs[0][1] = -1;
             dirs[1][0] = 1; dirs[1][1] = 1;
         }
-    } else {
-        dirs[0][0] = 1; dirs[0][1] = 1;
-        dirs[1][0] = 1; dirs[1][1] = -1;
-        dirs[2][0] = -1; dirs[2][1] = 1;
-        dirs[3][0] = -1; dirs[3][1] = -1;
     }
 
     for (int i = 0; i < num_dirs; i++) {
-        int tr = r + 2 * dirs[i][0];
-        int tc = c + 2 * dirs[i][1];
-        int mr = r + dirs[i][0];
-        int mc = c + dirs[i][1];
         if (!is_queen(piece)) {
+            int tr = r + 2 * dirs[i][0];
+            int tc = c + 2 * dirs[i][1];
+            int mr = r + dirs[i][0];
+            int mc = c + dirs[i][1];
             if (tr >= 0 && tr < BOARD_SIZE && tc >= 0 && tc < BOARD_SIZE && board[tr][tc] == ' ' &&
                 ((player == 'w' && is_black(board[mr][mc])) || (player == 'b' && is_white(board[mr][mc])))) {
                 return true;
@@ -121,7 +116,7 @@ bool has_capture(int r, int c, char player) {
             bool found_opponent = false;
             while (rr >= 0 && rr < BOARD_SIZE && cc >= 0 && cc < BOARD_SIZE) {
                 if (board[rr][cc] != ' ') {
-                    if ((player == 'W' && is_black(board[rr][cc])) || (player == 'B' && is_white(board[rr][cc]))) {
+                    if ((player == 'w' && is_black(board[rr][cc])) || (player == 'b' && is_white(board[rr][cc]))) {
                         if (found_opponent) break;
                         found_opponent = true;
                     } else {
@@ -174,7 +169,7 @@ void make_move(int fr, int fc, int tr, int tc) {
     board[fr][fc] = ' ';
     board[tr][tc] = p;
 
-    if (abs(tr - fr) == 2 || is_queen(p)) {
+    if (abs(tr - fr) >= 2 || is_queen(p)) {
         int sr = (tr > fr) ? 1 : -1;
         int sc = (tc > fc) ? 1 : -1;
         int rr = fr + sr, cc = fc + sc;
@@ -192,6 +187,45 @@ void make_move(int fr, int fc, int tr, int tc) {
     if (p == 'b' && tr == 7) board[tr][tc] = 'B';
 }
 
+bool captures_mandatory(char player) {
+    for (int r = 0; r < BOARD_SIZE; r++) {
+        for (int c = 0; c < BOARD_SIZE; c++) {
+            if ((player == 'w' && is_white(board[r][c])) || (player == 'b' && is_black(board[r][c]))) {
+                if (has_capture(r, c, player)) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+bool is_queen_capture_move(int fr, int fc, int tr, int tc, char piece) {
+    if (!is_queen(piece)) return false;
+    int dr = tr - fr;
+    int dc = tc - fc;
+    if (abs(dr) != abs(dc) || dr == 0) return false;
+
+    int sr = (dr > 0) ? 1 : -1;
+    int sc = (dc > 0) ? 1 : -1;
+    int r = fr + sr, c = fc + sc;
+    int captured = 0;
+
+    while (r != tr && c != tc) {
+        if (board[r][c] != ' ') {
+            if ((is_white(piece) && is_black(board[r][c])) || (is_black(piece) && is_white(board[r][c]))) {
+                captured++;
+                if (captured > 1) return false;
+            } else {
+                return false;
+            }
+        }
+        r += sr;
+        c += sc;
+    }
+    return captured == 1;
+}
+
 static const char* piece_image_path(int r, int c) {
     switch (board[r][c]) {
         case 'b': return "black.png";
@@ -207,14 +241,13 @@ static int sel_r = -1, sel_c = -1;
 
 static void update_cell_image(GtkWidget *event_box, gpointer user_data);
 static gboolean make_click_move(int fr, int fc, int tr, int tc);
-static gboolean on_square_clicked(GtkWidget *event_box, GdkEventButton *event, gpointer user_data);
-static void highlight_available_moves(int fr, int fc, char piece);
+static void highlight_available_moves(int fr, int fc, char piece, bool highlight_captures);
 static void clear_highlights();
 
 static gboolean make_click_move(int fr, int fc, int tr, int tc) {
     char piece = board[fr][fc];
     if ((current_player == 'w' && !is_white(piece)) || (current_player == 'b' && !is_black(piece))) {
-        return FALSE;  // Nie ten gracz
+        return FALSE;
     }
 
     char player = is_white(piece) ? 'w' : 'b';
@@ -224,21 +257,15 @@ static gboolean make_click_move(int fr, int fc, int tr, int tc) {
 
     if (!is_valid) return FALSE;
 
-    bool capture = abs(tr - fr) == 2 || is_queen(piece);
-    bool must_capture = false;
-    for (int r = 0; r < BOARD_SIZE && !must_capture; r++) {
-        for (int c = 0; c < BOARD_SIZE; c++) {
-            if (has_capture(r, c, player)) {
-                must_capture = true;
-                break;
-            }
-        }
+    bool capture = is_queen(piece) ? is_queen_capture_move(fr, fc, tr, tc, piece) : (abs(tr - fr) == 2);
+    bool must_capture = captures_mandatory(current_player);
+
+    if (must_capture && !capture) {
+        return FALSE; // Blokuj ruch bez bicia, gdy bicie jest możliwe
     }
 
-    if (must_capture && !capture) return FALSE;
-
     make_move(fr, fc, tr, tc);
-    current_player = (current_player == 'w') ? 'b' : 'w';  // Zmień gracza
+    current_player = (current_player == 'w') ? 'b' : 'w';
 
     char label_text[50];
     sprintf(label_text, "Ruch gracza: %s", current_player == 'w' ? "Biały" : "Czarny");
@@ -257,7 +284,7 @@ static gboolean make_click_move(int fr, int fc, int tr, int tc) {
 }
 
 static void start_game(GtkButton *button, gpointer user_data) {
-    initialize_board();  // Reset planszy
+    initialize_board();
     current_player = 'w';
     gtk_label_set_text(GTK_LABEL(player_label), "Ruch gracza: Biały");
     gtk_stack_set_visible_child_name(GTK_STACK(stack), "game");
@@ -286,31 +313,35 @@ static void update_cell_image(GtkWidget *event_box, gpointer user_data) {
     gtk_widget_show_all(frame);
 }
 
-static void highlight_available_moves(int fr, int fc, char piece) {
+static void highlight_available_moves(int fr, int fc, char piece, bool highlight_captures) {
     char player = is_white(piece) ? 'w' : 'b';
+    bool must_capture = captures_mandatory(player);
+
     if (!is_queen(piece)) {
-        int dirs[2][2] = {{-1, -1}, {-1, 1}};
-        if (player == 'b') { dirs[0][0] = 1; dirs[1][0] = 1; }
-        for (int i = 0; i < 2; i++) {
-            int tr = fr + dirs[i][0];
-            int tc = fc + dirs[i][1];
-            if (tr >= 0 && tr < BOARD_SIZE && tc >= 0 && tc < BOARD_SIZE && board[tr][tc] == ' ' &&
-                is_valid_pawn_move(fr, fc, tr, tc, player)) {
-                GtkWidget *event_box = gtk_grid_get_child_at(GTK_GRID(grid), tc, tr);
-                GtkStyleContext *ctx = gtk_widget_get_style_context(event_box);
-                gtk_style_context_add_class(ctx, "available-move");
+        if (must_capture || highlight_captures) {
+            int capture_dirs[4][2] = {{-2, -2}, {-2, 2}, {2, -2}, {2, 2}};
+            for (int i = 0; i < 4; i++) {
+                int tr = fr + capture_dirs[i][0];
+                int tc = fc + capture_dirs[i][1];
+                if (tr >= 0 && tr < BOARD_SIZE && tc >= 0 && tc < BOARD_SIZE && board[tr][tc] == ' ' &&
+                    is_valid_pawn_move(fr, fc, tr, tc, player)) {
+                    GtkWidget *event_box = gtk_grid_get_child_at(GTK_GRID(grid), tc, tr);
+                    GtkStyleContext *ctx = gtk_widget_get_style_context(event_box);
+                    gtk_style_context_add_class(ctx, "available-move");
+                }
             }
-        }
-        // Sprawdzanie bicia
-        int capture_dirs[4][2] = {{-2, -2}, {-2, 2}, {2, -2}, {2, 2}};
-        for (int i = 0; i < 4; i++) {
-            int tr = fr + capture_dirs[i][0];
-            int tc = fc + capture_dirs[i][1];
-            if (tr >= 0 && tr < BOARD_SIZE && tc >= 0 && tc < BOARD_SIZE && board[tr][tc] == ' ' &&
-                is_valid_pawn_move(fr, fc, tr, tc, player)) {
-                GtkWidget *event_box = gtk_grid_get_child_at(GTK_GRID(grid), tc, tr);
-                GtkStyleContext *ctx = gtk_widget_get_style_context(event_box);
-                gtk_style_context_add_class(ctx, "available-move");
+        } else {
+            int dirs[2][2] = {{-1, -1}, {-1, 1}};
+            if (player == 'b') { dirs[0][0] = 1; dirs[1][0] = 1; }
+            for (int i = 0; i < 2; i++) {
+                int tr = fr + dirs[i][0];
+                int tc = fc + dirs[i][1];
+                if (tr >= 0 && tr < BOARD_SIZE && tc >= 0 && tc < BOARD_SIZE && board[tr][tc] == ' ' &&
+                    is_valid_pawn_move(fr, fc, tr, tc, player)) {
+                    GtkWidget *event_box = gtk_grid_get_child_at(GTK_GRID(grid), tc, tr);
+                    GtkStyleContext *ctx = gtk_widget_get_style_context(event_box);
+                    gtk_style_context_add_class(ctx, "available-move");
+                }
             }
         }
     } else {
@@ -318,13 +349,36 @@ static void highlight_available_moves(int fr, int fc, char piece) {
         for (int i = 0; i < 4; i++) {
             int rr = fr + dirs[i][0];
             int cc = fc + dirs[i][1];
-            while (rr >= 0 && rr < BOARD_SIZE && cc >= 0 && cc < BOARD_SIZE) {
-                if (is_valid_queen_move(fr, fc, rr, cc, piece)) {
-                    GtkWidget *event_box = gtk_grid_get_child_at(GTK_GRID(grid), cc, rr);
-                    GtkStyleContext *ctx = gtk_widget_get_style_context(event_box);
-                    gtk_style_context_add_class(ctx, "available-move");
+            bool can_move = true;
+            bool captured = false;
+            while (rr >= 0 && rr < BOARD_SIZE && cc >= 0 && cc < BOARD_SIZE && can_move) {
+                if (board[rr][cc] == ' ') {
+                    if (must_capture) {
+                        if (captured && highlight_captures) {
+                            GtkWidget *event_box = gtk_grid_get_child_at(GTK_GRID(grid), cc, rr);
+                            GtkStyleContext *ctx = gtk_widget_get_style_context(event_box);
+                            gtk_style_context_add_class(ctx, "available-move");
+                        }
+                    } else {
+                        if (!captured && !highlight_captures) {
+                            GtkWidget *event_box = gtk_grid_get_child_at(GTK_GRID(grid), cc, rr);
+                            GtkStyleContext *ctx = gtk_widget_get_style_context(event_box);
+                            gtk_style_context_add_class(ctx, "available-move");
+                        } else if (captured && highlight_captures) {
+                            GtkWidget *event_box = gtk_grid_get_child_at(GTK_GRID(grid), cc, rr);
+                            GtkStyleContext *ctx = gtk_widget_get_style_context(event_box);
+                            gtk_style_context_add_class(ctx, "available-move");
+                        }
+                    }
+                } else if ((is_white(piece) && is_black(board[rr][cc])) || (is_black(piece) && is_white(board[rr][cc]))) {
+                    if (!captured) {
+                        captured = true;
+                    } else {
+                        can_move = false;
+                    }
+                } else {
+                    can_move = false;
                 }
-                if (board[rr][cc] != ' ') break;
                 rr += dirs[i][0];
                 cc += dirs[i][1];
             }
@@ -350,12 +404,16 @@ static gboolean on_square_clicked(GtkWidget *event_box, GdkEventButton *event, g
     if (!piece_selected) {
         char piece = board[r][c];
         if ((current_player == 'w' && is_white(piece)) || (current_player == 'b' && is_black(piece))) {
+            bool must_capture = captures_mandatory(current_player);
+            if (must_capture && !has_capture(r, c, current_player)) {
+                return FALSE; // Blokuj wybór pionka/damki, która nie może bić
+            }
             sel_r = r;
             sel_c = c;
             piece_selected = true;
             GtkStyleContext *ctx = gtk_widget_get_style_context(event_box);
             gtk_style_context_add_class(ctx, "selected-cell");
-            highlight_available_moves(r, c, piece);
+            highlight_available_moves(r, c, piece, must_capture);
         }
     } else {
         if (make_click_move(sel_r, sel_c, r, c)) {
@@ -387,14 +445,12 @@ static void activate(GtkApplication *app, gpointer user_data) {
     stack = gtk_stack_new();
     gtk_container_add(GTK_CONTAINER(window), stack);
 
-    // Menu startowe
     menu_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
     start_button = gtk_button_new_with_label("Rozpocznij grę");
     g_signal_connect(start_button, "clicked", G_CALLBACK(start_game), NULL);
     gtk_box_pack_start(GTK_BOX(menu_box), start_button, TRUE, TRUE, 0);
     gtk_stack_add_named(GTK_STACK(stack), menu_box, "menu");
 
-    // Ekran gry
     game_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
     player_label = gtk_label_new("Ruch gracza: Biały");
     gtk_box_pack_start(GTK_BOX(game_box), player_label, FALSE, FALSE, 0);
@@ -430,7 +486,6 @@ static void activate(GtkApplication *app, gpointer user_data) {
     }
     gtk_stack_add_named(GTK_STACK(stack), game_box, "game");
 
-    // Ekran końcowy
     end_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
     GtkWidget *win_label = gtk_label_new("Gracz X wygrywa!");
     return_button = gtk_button_new_with_label("Powrót do menu");
@@ -439,7 +494,6 @@ static void activate(GtkApplication *app, gpointer user_data) {
     gtk_box_pack_start(GTK_BOX(end_box), return_button, TRUE, TRUE, 0);
     gtk_stack_add_named(GTK_STACK(stack), end_box, "end");
 
-    // Ustawienie menu jako domyślny widok
     gtk_stack_set_visible_child_name(GTK_STACK(stack), "menu");
 
     gtk_widget_show_all(window);
