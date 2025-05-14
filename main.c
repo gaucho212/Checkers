@@ -164,11 +164,12 @@ bool has_legal_moves(char player) {
     return false;
 }
 
-void make_move(int fr, int fc, int tr, int tc) {
+void make_move(int fr, int fc, int tr, int tc, bool* continue_turn) {
     char p = board[fr][fc];
     board[fr][fc] = ' ';
     board[tr][tc] = p;
 
+    bool capture = false;
     if (abs(tr - fr) >= 2 || is_queen(p)) {
         int sr = (tr > fr) ? 1 : -1;
         int sc = (tc > fc) ? 1 : -1;
@@ -176,6 +177,7 @@ void make_move(int fr, int fc, int tr, int tc) {
         while (rr != tr && cc != tc) {
             if (board[rr][cc] != ' ') {
                 board[rr][cc] = ' ';
+                capture = true;
                 break;
             }
             rr += sr;
@@ -185,6 +187,12 @@ void make_move(int fr, int fc, int tr, int tc) {
 
     if (p == 'w' && tr == 0) board[tr][tc] = 'W';
     if (p == 'b' && tr == 7) board[tr][tc] = 'B';
+
+    if (capture && has_capture(tr, tc, current_player)) {
+        *continue_turn = true;
+    } else {
+        *continue_turn = false;
+    }
 }
 
 bool captures_mandatory(char player) {
@@ -264,12 +272,15 @@ static gboolean make_click_move(int fr, int fc, int tr, int tc) {
         return FALSE; // Blokuj ruch bez bicia, gdy bicie jest możliwe
     }
 
-    make_move(fr, fc, tr, tc);
-    current_player = (current_player == 'w') ? 'b' : 'w';
+    bool continue_turn;
+    make_move(fr, fc, tr, tc, &continue_turn);
 
-    char label_text[50];
-    sprintf(label_text, "Ruch gracza: %s", current_player == 'w' ? "Biały" : "Czarny");
-    gtk_label_set_text(GTK_LABEL(player_label), label_text);
+    if (!continue_turn) {
+        current_player = (current_player == 'w') ? 'b' : 'w';
+        char label_text[50];
+        sprintf(label_text, "Ruch gracza: %s", current_player == 'w' ? "Biały" : "Czarny");
+        gtk_label_set_text(GTK_LABEL(player_label), label_text);
+    }
 
     if (!has_legal_moves(current_player)) {
         char win_msg[50];
@@ -416,16 +427,26 @@ static gboolean on_square_clicked(GtkWidget *event_box, GdkEventButton *event, g
             highlight_available_moves(r, c, piece, must_capture);
         }
     } else {
-        if (make_click_move(sel_r, sel_c, r, c)) {
-            gtk_container_foreach(GTK_CONTAINER(grid), (GtkCallback)update_cell_image, NULL);
-        }
+        bool moved = make_click_move(sel_r, sel_c, r, c);
+        gtk_container_foreach(GTK_CONTAINER(grid), (GtkCallback)update_cell_image, NULL);
         clear_highlights();
+
+        // Usuń podświetlenie z pierwotnej pozycji
         GtkWidget *prev = g_object_get_data(G_OBJECT(grid), "last_selected");
         if (prev) {
             gtk_style_context_remove_class(gtk_widget_get_style_context(prev), "selected-cell");
         }
-        piece_selected = false;
-        sel_r = sel_c = -1;
+
+        if (moved && has_capture(r, c, current_player)) {
+            sel_r = r;
+            sel_c = c;
+            GtkStyleContext *ctx = gtk_widget_get_style_context(event_box);
+            gtk_style_context_add_class(ctx, "selected-cell");
+            highlight_available_moves(r, c, board[r][c], true);
+        } else {
+            piece_selected = false;
+            sel_r = sel_c = -1;
+        }
     }
 
     g_object_set_data(G_OBJECT(grid), "last_selected", event_box);
@@ -440,7 +461,7 @@ static void activate(GtkApplication *app, gpointer user_data) {
 
     window = gtk_application_window_new(app);
     gtk_window_set_title(GTK_WINDOW(window), "Warcaby");
-    gtk_window_set_default_size(GTK_WINDOW(window), 400, 400);
+    gtk_window_set_default_size(GTK_WINDOW(window), 500, 500);
 
     stack = gtk_stack_new();
     gtk_container_add(GTK_CONTAINER(window), stack);
